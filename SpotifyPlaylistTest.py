@@ -1,3 +1,14 @@
+import sys
+import random
+import math
+import csv
+#import pandas as pd
+#import numpy as np
+from sklearn import tree
+from sklearn.neural_network import MLPClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.naive_bayes import BernoulliNB
+from sklearn.naive_bayes import MultinomialNB
 import spotipy
 import spotipy.util as util
 sp = spotipy.Spotify()
@@ -69,8 +80,8 @@ for t in tracks['items']:
     instance.append(sp.audio_features(track['id'])[0]['tempo'])
     instance.append(sp.audio_features(track['id'])[0]['valence'])
     instance.append(sp.audio_features(track['id'])[0]['mode'])
-                    
-    trainingInstances.append(instance)
+    pair = [1, instance]
+    trainingInstances.append(pair)
 
 
 print()
@@ -98,13 +109,20 @@ for playlist in playlists['items']:
                 instance.append(sp.audio_features(track['id'])[0]['tempo'])
                 instance.append(sp.audio_features(track['id'])[0]['valence'])
                 instance.append(sp.audio_features(track['id'])[0]['mode'])
-                                
-                trainingInstances.append(instance)
+                pair2 = [0, instance]    
+                trainingInstances.append(pair2)
         
+random.shuffle(trainingInstances)
+labels = [i[0] for i in trainingInstances]
+attributes = [i[1] for i in trainingInstances]
+#print(labels)
+#print(attributes)
 
+clf = tree.DecisionTreeClassifier()
+clf = clf.fit(attributes, labels)
+tree.plot_tree(clf)
 
 print("Done!") 
 print(len(trainingInstances))
-
 
 
