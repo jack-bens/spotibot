@@ -9,14 +9,21 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.naive_bayes import BernoulliNB
 from sklearn.naive_bayes import MultinomialNB
+from sklearn.tree.export import export_text
 import spotipy
 import spotipy.util as util
 sp = spotipy.Spotify()
 import csv
 
+RANDOM_SEED = 12345
+TRAINING_PERCENT = 0.75
+UPBEAT_ID = "2grWws6IB2nbfwEuxz83t0"
+NONUPBEAT_ID = "6ZiAdL4ta0XRnkraUpBKYe"
+
 from spotipy.oauth2 import SpotifyClientCredentials
 
-cid ="2f3b64d6217f4c36b44b10718e88a860" 
+cid ="2f3b64d6217f4c36b44b10718e88a860"
+CLIENT_ID = cid
 secret = "d948722ed8804508962d797d9a9d7206"
 username = "9qmimovhfjmws0vgx2gotnefa"
 
@@ -60,6 +67,62 @@ print("Constructing the Training Set...")
 print()
 print("Adding songs from the playlist")
 
+
+# Set random seeds for random and numpy random (used by scikit-learn):
+random.seed(RANDOM_SEED)
+np.random.seed(RANDOM_SEED)
+
+# Create dataset
+instances = []
+upbeat_tracks = sp.user_playlist_tracks(CLIENT_ID, UPBEAT_ID)
+for t in upbeat_tracks["items"]:
+	track = t["track"]
+	af = sp.audio_features(track["id"])[0]
+	attributeKeys = [
+		'duration_ms',
+		'danceability',
+		'energy',
+		'instrumentalness',
+		'liveness',
+		'loudness',
+		'speechiness',
+		'tempo',
+		'valence',
+		'mode'
+	]
+	audioAttributes = [af[key] for key in af.keys() if key in attributeKeys]
+	instance = [track['popularity']] + audioAttributes
+	instances.append([0, instance])
+
+nonupbeat_tracks = sp.user_playlist_tracks(CLIENT_ID, NONUPBEAT_ID)
+for t in upbeat_tracks["items"]:
+	track = t["track"]
+	af = sp.audio_features(track["id"])[0]
+	attributeKeys = [
+		'duration_ms',
+		'danceability',
+		'energy',
+		'instrumentalness',
+		'liveness',
+		'loudness',
+		'speechiness',
+		'tempo',
+		'valence',
+		'mode'
+	]
+	audioAttributes = [af[key] for key in af.keys() if key in attributeKeys]
+	instance = [track['popularity']] + audioAttributes
+	instances.append([1, instance])
+
+# Shuffle instances and split into label array and attribute array:
+random.shuffle(instances)
+trainingLabels = []
+trainingAttributes = []
+for i in instances:
+	trainingLabels.append(i[0])
+	trainingAttributes.append(i[1])
+
+'''
 tracks = sp.user_playlist_tracks(sp.current_user()['id'], chosenPlaylist['id'])
 for t in tracks['items']:
    # results = sp.current_user_saved_tracks(limit=50, offset=location)
@@ -67,8 +130,8 @@ for t in tracks['items']:
     track = t['track']
     instance = [1]                     
     instance.append(track['name'])
-    instance.append(track['artists'][0]['name'])
     instance.append(track['id'])
+    instance.append(track['artists'][0]['name'])
     instance.append(track['duration_ms'])
     instance.append(track['popularity'])
     instance.append(sp.audio_features(track['id'])[0]['danceability'])
@@ -95,8 +158,8 @@ for playlist in playlists['items']:
             track = t['track']
             instance = [0]
             instance.append(track['name'])
-            instance.append(track['artists'][0]['name'])
             instance.append(track['id'])
+            instance.append(track['artists'][0]['name'])
             instance.append(track['duration_ms'])
             instance.append(track['popularity'])
             if (sp.audio_features((track['id'])) is not None): 
@@ -112,21 +175,41 @@ for playlist in playlists['items']:
                 #pair2 = [0, instance]    
                 trainingInstances.append(instance)
 
-############ TODO: MAKE LESS JANKY
-dataframe = pd.DataFrame(data = trainingInstances)
-dataframe = pd.get_dummies(dataframe, drop_first = True)
-instances = [[i[0], list(i)[1:]] for i in dataframe.values]
+
+
+
+############ TODO: MAKE LESS JANKY ############
+#dataframe = pd.DataFrame(data = trainingInstances)
+#dataframe = pd.get_dummies(dataframe, drop_first = True)
+instances = [[i[0], list(i)[3:]] for i in trainingInstances]#dataframe.values]
 
 random.shuffle(instances)
 labels = [i[0] for i in instances]
 attributes = [i[1] for i in instances]
-#print(labels)
-#print(attributes)
+print(labels)
+print(attributes)
+
+
+'''
+
 
 clf = tree.DecisionTreeClassifier()
-clf = clf.fit(attributes, labels)
+clf = clf.fit(trainingAttributes, trainingLabels)
+result = export_text(clf)
+print(result)
 tree.plot_tree(clf)
 
+
+'''
+############ Splitting into trainin/test sets
+div = int(TRAINING_PERCENT * float(len(instances)))
+training = instances[:div]
+testing = instances[div:]
+trainingLabels = [i[0] for i in training]
+trainingAttributes = [i[1] for i in training]
+testLabels = [i[0] for i in testing]
+testAttributes = [i[1] for i in testing]
+'''
 print("Done!") 
 print(len(trainingInstances))
 
