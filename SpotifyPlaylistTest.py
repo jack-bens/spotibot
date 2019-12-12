@@ -2,8 +2,8 @@ import sys
 import random
 import math
 import csv
-#import pandas as pd
-#import numpy as np
+import pandas as pd
+import numpy as np
 from sklearn import tree
 from sklearn.neural_network import MLPClassifier
 from sklearn.naive_bayes import GaussianNB
@@ -65,7 +65,7 @@ for t in tracks['items']:
    # results = sp.current_user_saved_tracks(limit=50, offset=location)
     print(t['track']['name'])
     track = t['track']
-    instance = []                     
+    instance = [1]                     
     instance.append(track['name'])
     instance.append(track['artists'][0]['name'])
     instance.append(track['id'])
@@ -80,8 +80,8 @@ for t in tracks['items']:
     instance.append(sp.audio_features(track['id'])[0]['tempo'])
     instance.append(sp.audio_features(track['id'])[0]['valence'])
     instance.append(sp.audio_features(track['id'])[0]['mode'])
-    pair = [1, instance]
-    trainingInstances.append(pair)
+    #pair = [1, instance]
+    trainingInstances.append(instance)
 
 
 print()
@@ -93,7 +93,7 @@ for playlist in playlists['items']:
             # results = sp.current_user_saved_tracks(limit=50, offset=location)
             # print(t['track']['name'])
             track = t['track']
-            instance = []                     
+            instance = [0]
             instance.append(track['name'])
             instance.append(track['artists'][0]['name'])
             instance.append(track['id'])
@@ -109,12 +109,17 @@ for playlist in playlists['items']:
                 instance.append(sp.audio_features(track['id'])[0]['tempo'])
                 instance.append(sp.audio_features(track['id'])[0]['valence'])
                 instance.append(sp.audio_features(track['id'])[0]['mode'])
-                pair2 = [0, instance]    
-                trainingInstances.append(pair2)
-        
-random.shuffle(trainingInstances)
-labels = [i[0] for i in trainingInstances]
-attributes = [i[1] for i in trainingInstances]
+                #pair2 = [0, instance]    
+                trainingInstances.append(instance)
+
+############ TODO: MAKE LESS JANKY
+dataframe = pd.DataFrame(data = trainingInstances)
+dataframe = pd.get_dummies(dataframe, drop_first = True)
+instances = [[i[0], list(i)[1:]] for i in dataframe.values]
+
+random.shuffle(instances)
+labels = [i[0] for i in instances]
+attributes = [i[1] for i in instances]
 #print(labels)
 #print(attributes)
 
