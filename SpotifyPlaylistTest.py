@@ -5,6 +5,8 @@ import csv
 import pandas as pd
 import numpy as np
 import shap
+#import pprint
+#import subprocess
 
 from sklearn import tree
 from sklearn import preprocessing
@@ -23,6 +25,7 @@ RANDOM_SEED = 473463298
 TRAINING_PERCENT = 0.75
 UPBEAT_ID = "3DFoRKv3xS2cHTIr0h3txX"
 NONUPBEAT_ID = "3fNcrDFpar3QMWAc5fji9G"
+
 
 
 from spotipy.oauth2 import SpotifyClientCredentials
@@ -79,7 +82,7 @@ def calculateAccuracy(labels, numPredictions, confMatrix):
 #client_credentials_manager = SpotifyClientCredentials(client_id=cid, client_secret=secret) 
 #sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
 
-scope = 'user-library-read'
+scope = 'user-library-read playlist-modify-public'
 token = util.prompt_for_user_token(username, scope, client_id=cid,
                                    client_secret=secret, redirect_uri='http://localhost/')
 
@@ -110,6 +113,12 @@ choice = int(input("Enter the 0-based index of your selection: "))
 chosenPlaylist = playlists['items'][choice]
 
 print("You've selected " + playlists['items'][choice]['name'])
+
+
+#playlist_name = input("Enter a name for the playlist being generated: ")
+#playlist_description = input("Now enter a description for the playlist: ")
+#playlists = sp.user_playlist_create(username, playlist_name, playlist_description)
+#pprint.pprint(playlists)
 
 print("Constructing the Training Set...")
 print()

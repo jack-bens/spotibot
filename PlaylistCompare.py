@@ -21,6 +21,14 @@ import spotipy
 import spotipy.util as util
 from spotipy.oauth2 import SpotifyClientCredentials
 
+# Tree visual imports
+from sklearn.externals.six import StringIO
+from IPython.display import Image
+from sklearn.tree import export_graphviz
+import pydotplus
+
+from spotifywrapper import get_playlist_songs
+
 sp = spotipy.Spotify()
 
 RANDOM_SEED = 473463298
@@ -30,6 +38,16 @@ cid ="2f3b64d6217f4c36b44b10718e88a860"
 CLIENT_ID = cid
 secret = "d948722ed8804508962d797d9a9d7206"
 instances = []
+attributeList = ['duration_ms',
+		'danceability',
+		'energy',
+		'instrumentalness',
+		'liveness',
+		'loudness',
+		'speechiness',
+		'tempo',
+		'valence','mode', 'key', 'time_signature', 'popularity']
+
 
 def writeConfMatrix(labels, trueLabels, predictedLabels):
 	# Calculate confusion matrix:
@@ -72,25 +90,31 @@ def calculateAccuracy(labels, numPredictions, confMatrix):
     print()
 
 def addPlaylistTracks (PLAYLIST_ID, label):
-    tracks = sp.user_playlist_tracks(CLIENT_ID, PLAYLIST_ID)
-    for t in tracks["items"]:
-            track = t["track"]
-            af = sp.audio_features(track["id"])[0]
-            attributeKeys = [
-                    'duration_ms',
-                    'danceability',
-                    'energy',
-                    'instrumentalness',
-                    'liveness',
-                    'loudness',
-                    'speechiness',
-                    'tempo',
-                    'valence',
-                    'mode'
-            ]
-            audioAttributes = [af[key] for key in af.keys() if key in attributeKeys]
-            instance = [track['popularity']] + audioAttributes
-            instances.append([label, instance])
+    playlist = sp.user_playlist(CLIENT_ID, PLAYLIST_ID)
+    print("Adding tracks from playlist " + playlist['name'])
+    #tracks = sp.user_playlist_tracks(CLIENT_ID, PLAYLIST_ID)
+    tracks = get_playlist_songs(PLAYLIST_ID, attributeList)
+    for track in tracks:#["items"]:
+            #track = t["track"]
+            #print("Adding track to data set: " + track['name'])
+            #af = sp.audio_features(track["id"])[0]
+            #attributeKeys = [
+            #        'duration_ms',
+            #        'danceability',
+            #        'energy',
+            #        'instrumentalness',
+            #        'liveness',
+            #        'loudness',
+            #        'speechiness',
+            #        'tempo',
+            #        'valence',
+            #        'mode',
+            #        'key',
+            #        'time_signature'
+            #]
+            #audioAttributes = [af[key] for key in af.keys() if key in attributeKeys]
+            #instance = [track['popularity']] + audioAttributes
+            instances.append([label, track])
 
 
 username = input("Hello! Please enter your spotify username (this may be a seemingly random string of characters found on your 'account details' page): ")
@@ -151,14 +175,59 @@ testAttributes = [i[1] for i in testing]
 trainingAttributes = preprocessing.scale(trainingAttributes)
 testAttributes = preprocessing.scale(testAttributes)
 
-clf = GaussianNB()
 
-clf = clf.fit(trainingAttributes, trainingLabels)
-predictedLabels = clf.predict(testAttributes)
+print("Running Naive Bayes: ")
+clf1 = GaussianNB()
+
+clf1 = clf1.fit(trainingAttributes, trainingLabels)
+predictedLabels = clf1.predict(testAttributes)
 
 print(predictedLabels)
 matrix = writeConfMatrix([0,1], testLabels, predictedLabels)
 print(calculateAccuracy([0,1], len(predictedLabels), matrix))
+
+print("Running neural network:")
+clf3 = MLPClassifier(
+			hidden_layer_sizes=(50,), # 1 hidden layer, 50 hidden neurons
+			activation="logistic", # Activation function = Logistic
+			solver="sgd", # Weight optimization: stochastic gradient descent
+			max_iter=500, # Number of epochs
+			#verbose=True, # Print progress messages to stdout
+		)
+clf3 = clf3.fit(trainingAttributes, trainingLabels)
+predictedLabels = clf3.predict(testAttributes)
+print(predictedLabels)
+matrix = writeConfMatrix([0,1], testLabels, predictedLabels)
+print(calculateAccuracy([0,1], len(predictedLabels), matrix))
+
+
+print("Now running decision trees")
+clf2 = tree.DecisionTreeClassifier()
+clf2 = clf2.fit(trainingAttributes, trainingLabels)
+predictedLabels = clf2.predict(testAttributes)
+print(predictedLabels)
+matrix = writeConfMatrix([0,1], testLabels, predictedLabels)
+print(calculateAccuracy([0,1], len(predictedLabels), matrix))
+shap_values = shap.TreeExplainer(clf2).shap_values(trainingAttributes)
+shap.summary_plot(shap_values, trainingAttributes, plot_type="bar", feature_names=attributeList)
+#shap.dependence_plot("Feature 9", shap_values[0], trainingAttributes)
+shap.summary_plot(shap_values, trainingAttributes)
+
+result = export_text(clf2, feature_names=attributeList)
+
+# Plot decision tree:
+tree.plot_tree(clf2)
+# Visualize the tree and save as png file:
+dot_data = StringIO()
+export_graphviz(clf2, out_file=dot_data,
+    filled=True, rounded=True,
+    special_characters=True)
+graph = pydotplus.graph_from_dot_data(dot_data.getvalue())
+# Save file:
+graph.write_png("PlaylistComparisonTree.png")
+
+print(result)
+
 
 print("Done!") 
 print(len(trainingAttributes))
