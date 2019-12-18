@@ -57,5 +57,6 @@ def get_playlist_songs(id, attributes=attributeKeys):
 			track = t['track']
 			af = sp.audio_features(track['id'])[0]
 			instanceAttr = [af[key] for key in af.keys() if key in attributes]
+			instanceAttr.append(track['popularity'])
 			instances.append(instanceAttr)
 	return(instances)

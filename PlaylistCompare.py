@@ -27,6 +27,8 @@ from IPython.display import Image
 from sklearn.tree import export_graphviz
 import pydotplus
 
+from spotifywrapper import get_playlist_songs
+
 sp = spotipy.Spotify()
 
 RANDOM_SEED = 473463298
@@ -89,29 +91,30 @@ def calculateAccuracy(labels, numPredictions, confMatrix):
 
 def addPlaylistTracks (PLAYLIST_ID, label):
     playlist = sp.user_playlist(CLIENT_ID, PLAYLIST_ID)
-    tracks = sp.user_playlist_tracks(CLIENT_ID, PLAYLIST_ID)
     print("Adding tracks from playlist " + playlist['name'])
-    for t in tracks["items"]:
-            track = t["track"]
+    #tracks = sp.user_playlist_tracks(CLIENT_ID, PLAYLIST_ID)
+    tracks = get_playlist_songs(PLAYLIST_ID, attributeList)
+    for track in tracks:#["items"]:
+            #track = t["track"]
             #print("Adding track to data set: " + track['name'])
-            af = sp.audio_features(track["id"])[0]
-            attributeKeys = [
-                    'duration_ms',
-                    'danceability',
-                    'energy',
-                    'instrumentalness',
-                    'liveness',
-                    'loudness',
-                    'speechiness',
-                    'tempo',
-                    'valence',
-                    'mode',
-                    'key',
-                    'time_signature'
-            ]
-            audioAttributes = [af[key] for key in af.keys() if key in attributeKeys]
-            instance = [track['popularity']] + audioAttributes
-            instances.append([label, instance])
+            #af = sp.audio_features(track["id"])[0]
+            #attributeKeys = [
+            #        'duration_ms',
+            #        'danceability',
+            #        'energy',
+            #        'instrumentalness',
+            #        'liveness',
+            #        'loudness',
+            #        'speechiness',
+            #        'tempo',
+            #        'valence',
+            #        'mode',
+            #        'key',
+            #        'time_signature'
+            #]
+            #audioAttributes = [af[key] for key in af.keys() if key in attributeKeys]
+            #instance = [track['popularity']] + audioAttributes
+            instances.append([label, track])
 
 
 username = input("Hello! Please enter your spotify username (this may be a seemingly random string of characters found on your 'account details' page): ")
@@ -179,6 +182,20 @@ clf1 = GaussianNB()
 clf1 = clf1.fit(trainingAttributes, trainingLabels)
 predictedLabels = clf1.predict(testAttributes)
 
+print(predictedLabels)
+matrix = writeConfMatrix([0,1], testLabels, predictedLabels)
+print(calculateAccuracy([0,1], len(predictedLabels), matrix))
+
+print("Running neural network:")
+clf3 = MLPClassifier(
+			hidden_layer_sizes=(50,), # 1 hidden layer, 50 hidden neurons
+			activation="logistic", # Activation function = Logistic
+			solver="sgd", # Weight optimization: stochastic gradient descent
+			max_iter=500, # Number of epochs
+			#verbose=True, # Print progress messages to stdout
+		)
+clf3 = clf3.fit(trainingAttributes, trainingLabels)
+predictedLabels = clf3.predict(testAttributes)
 print(predictedLabels)
 matrix = writeConfMatrix([0,1], testLabels, predictedLabels)
 print(calculateAccuracy([0,1], len(predictedLabels), matrix))
