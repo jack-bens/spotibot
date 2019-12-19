@@ -114,13 +114,11 @@ lenSongs = int(sp.current_user_saved_tracks()['total'])
 trainingInstances = []
 
 print("general info message-- Fill in later!!!!!!!!!!!!!!")
+#user = sp.user(username)
+#print(user)
 
 # Add user's top tracks
-results = sp.current_user_top_tracks(time_range='medium_term', limit=50)
-print("results size before merge: " + repr(len(results['items'])))
-results2 = sp.current_user_top_tracks(time_range='medium_term', limit=50, offset=50)        
-#results.update(results2)
-#print("new size: " + repr(len(results['items'])))
+results = sp.current_user_top_tracks(time_range='medium_term', limit=50)   
 for track in results['items']:
         #track = t["track"]
         print("Adding track to data set: " + track['name'])
@@ -142,8 +140,9 @@ for track in results['items']:
         audioAttributes = [af[key] for key in af.keys() if key in attributeKeys]
         instance = [track['popularity']] + audioAttributes
         instances.append([1, instance])
-for track in results2['items']:
-        #track = t["track"]
+results = sp.current_user_saved_tracks()
+for t in results['items']:
+        track = t["track"]
         print("Adding track to data set: " + track['name'])
         af = sp.audio_features(track["id"])[0]
         attributeKeys = [
@@ -164,3 +163,63 @@ for track in results2['items']:
         instance = [track['popularity']] + audioAttributes
         instances.append([1, instance])
 
+print(len(instances))
+userSelection = ''
+print("Now, Spotify makes it much more difficult to find music that you don't like,\n so we're going to ask you to give the playlist ID(s)\n for playlists of songs that you don't like")
+while userSelection != 'done':
+    userSelection = input("Enter playlist ID: ")
+    if userSelection == 'done':
+        break
+    addPlaylistTracks(userSelection, 0)
+
+#trainingSplit = len(instances)
+
+print("OK! Now enter a search term/phrase, and our program will find playlists related to that search.")
+print("Our program will go through these playlists, and pick out songs that are similar to songs you like accordingot Spotify's attributes.")        
+search_str = input("Enter search string: ")
+result = sp.search(q=search_str, limit=3, type='playlist')
+testInstances = []
+for item in result['playlists']['items']:
+        print("Searching for songs in playlist: " + item['name'])
+        testInstances.append(get_playlist_songs(item['id'], attributeList))
+
+
+
+print("Now running decision trees")
+random.shuffle(instances)
+
+trainingLabels = []
+trainingAttributes = []
+for i in instances:
+	trainingLabels.append(i[0])
+	trainingAttributes.append(i[1])
+
+trainingAttributes = preprocessing.normalize(trainingAttributes, norm='l1')
+
+#div = int(TRAINING_PERCENT * float(len(instances)))
+training = instances
+testAttributes = testInstances[0]
+trainingLabels = [i[0] for i in training]
+trainingAttributes = [i[1] for i in training]
+#testLabels = [i[0] for i in testing]
+#testAttributes = [i[1] for i in testing]
+
+print(testAttributes)
+
+trainingAttributes = preprocessing.scale(trainingAttributes)
+testAttributes = preprocessing.scale(testAttributes)
+clf2 = tree.DecisionTreeClassifier()
+clf2 = clf2.fit(trainingAttributes, trainingLabels)
+predictedLabels = clf2.predict(testAttributes)
+print(predictedLabels)
+#matrix = writeConfMatrix([0,1], testLabels, predictedLabels)
+#print(calculateAccuracy([0,1], len(predictedLabels), matrix))
+shap_values = shap.TreeExplainer(clf2).shap_values(trainingAttributes)
+shap.summary_plot(shap_values, trainingAttributes, plot_type="bar", feature_names=attributeList)
+#shap.dependence_plot("Feature 9", shap_values[0], trainingAttributes)
+shap.summary_plot(shap_values, trainingAttributes)
+
+result = export_text(clf2, feature_names=attributeList)
+
+# Plot decision tree:
+tree.plot_tree(clf2)

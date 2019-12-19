@@ -56,6 +56,8 @@ def get_playlist_songs(id, attributes=attributeKeys):
 		instances = []
 		for t in r.json()['tracks']['items']:
 			track = t['track']
+			if track is None:
+                            continue
 			af = sp.audio_features(track['id'])[0]
 			instanceAttr = [af[key] for key in af.keys() if key in attributes]
 			instanceAttr.append(track['popularity'])
