@@ -136,7 +136,7 @@ attributeList = ['duration_ms',
 		'loudness',
 		'speechiness',
 		'tempo',
-		'valence','mode', 'popularity']
+		'valence','mode', 'key', 'time_signature', 'popularity']
 
 print(attributeList)
 
