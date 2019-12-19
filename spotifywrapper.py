@@ -2,6 +2,7 @@
 
 import sys
 import requests
+import json
 import spotipy
 import spotipy.util as util
 
@@ -47,8 +48,8 @@ def get_playlist_songs(id, attributes=attributeKeys):
 		(default: pre-determined attributes list)
 	"""
 	r = requests.get(f'https://api.spotify.com/v1/playlists/{id}',
-		headers={"Content-Type":"application/json",
-				"Authorization":f"Bearer {token}"})
+		headers={'Content-Type':'application/json',
+				'Authorization':f'Bearer {token}'})
 	if not r:
 		print(f"Couldn't get playlist with ID {id}: Response {r.status_code}")
 	else:
@@ -60,3 +61,25 @@ def get_playlist_songs(id, attributes=attributeKeys):
 			instanceAttr.append(track['popularity'])
 			instances.append(instanceAttr)
 	return(instances)
+
+# Does not work yet:
+def set_playlist_image(id, filename):
+	""" Sets the playlist image
+
+	id -- playlist ID
+	filename -- image filename in spotibot directory
+	"""
+	try:
+		image = open(filename, 'rb')
+	except Exception as e:
+		print(f"Couldn't open image: {e}")
+		return None
+	files = {'crying.jpg': image.read()}
+	r = requests.put(f'https://api.spotify.com/v1/playlists/{id}/images',
+		headers={'Content-Type':'image/jpeg',
+				'Authorization':f'Bearer {token}'},
+		body=image.read())
+	print(r)
+	print(r.text)
+	if not r:
+		print(f"Couldn't modify playlist image: Response {r.status_code}")
