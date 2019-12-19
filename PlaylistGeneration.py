@@ -95,6 +95,7 @@ def addPlaylistTracks (PLAYLIST_ID, label):
     print("Adding tracks from playlist " + playlist['name'])
     #tracks = sp.user_playlist_tracks(CLIENT_ID, PLAYLIST_ID)
     tracks = get_playlist_songs(PLAYLIST_ID, attributeList)
+    tracks = [i[1] for i in tracks] # extract actual track, leave id behind
     for track in tracks:#["items"]:
             instances.append([label, track])
 
@@ -118,10 +119,11 @@ print("general info message-- Fill in later!!!!!!!!!!!!!!")
 #print(user)
 
 # Add user's top tracks
+print("Adding Your Top Tracks!")
 results = sp.current_user_top_tracks(time_range='medium_term', limit=50)   
 for track in results['items']:
         #track = t["track"]
-        print("Adding track to data set: " + track['name'])
+        #print("Adding track to data set: " + track['name'])
         af = sp.audio_features(track["id"])[0]
         attributeKeys = [
                 'duration_ms',
@@ -141,9 +143,10 @@ for track in results['items']:
         instance = [track['popularity']] + audioAttributes
         instances.append([1, instance])
 results = sp.current_user_saved_tracks()
+print("Adding your liked songs!")
 for t in results['items']:
         track = t["track"]
-        print("Adding track to data set: " + track['name'])
+        #print("Adding track to data set: " + track['name'])
         af = sp.audio_features(track["id"])[0]
         attributeKeys = [
                 'duration_ms',
@@ -179,6 +182,8 @@ print("Our program will go through these playlists, and pick out songs that are 
 search_str = input("Enter search string: ")
 result = sp.search(q=search_str, limit=3, type='playlist')
 testInstances = []
+
+track
 for item in result['playlists']['items']:
         print("Searching for songs in playlist: " + item['name'])
         testInstances.append(get_playlist_songs(item['id'], attributeList))
@@ -195,16 +200,19 @@ for i in instances:
 	trainingAttributes.append(i[1])
 
 trainingAttributes = preprocessing.normalize(trainingAttributes, norm='l1')
+random.shuffle(testInstances)
 
 #div = int(TRAINING_PERCENT * float(len(instances)))
 training = instances
-testAttributes = testInstances[0]
 trainingLabels = [i[0] for i in training]
 trainingAttributes = [i[1] for i in training]
+testAttributes = [i[1] for i in testInstances[0]]
+testIds = [i[0] for i in testInstances[0]]
+
 #testLabels = [i[0] for i in testing]
 #testAttributes = [i[1] for i in testing]
 
-print(testAttributes)
+# print(testAttributes)
 
 trainingAttributes = preprocessing.scale(trainingAttributes)
 testAttributes = preprocessing.scale(testAttributes)
@@ -212,6 +220,21 @@ clf2 = tree.DecisionTreeClassifier()
 clf2 = clf2.fit(trainingAttributes, trainingLabels)
 predictedLabels = clf2.predict(testAttributes)
 print(predictedLabels)
+
+# Create New Playlist
+playlist_name = "Spotibot: " + search_str + " Playlist"
+playlists = sp.user_playlist_create(username, playlist_name)
+
+# For all tracks with a predicted label of 1, add to playlist
+track_ids = []
+for i, prediction in enumerate(predictedLabels):
+        if (prediction == 1):
+                track_ids.append(testIds[i])
+
+
+resultAdd = sp.user_playlist_add_tracks(username, playlists['id'], track_ids)
+print(resultAdd)
+
 #matrix = writeConfMatrix([0,1], testLabels, predictedLabels)
 #print(calculateAccuracy([0,1], len(predictedLabels), matrix))
 shap_values = shap.TreeExplainer(clf2).shap_values(trainingAttributes)
