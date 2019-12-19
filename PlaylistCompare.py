@@ -93,7 +93,8 @@ def addPlaylistTracks (PLAYLIST_ID, label):
     playlist = sp.user_playlist(CLIENT_ID, PLAYLIST_ID)
     print("Adding tracks from playlist " + playlist['name'])
     #tracks = sp.user_playlist_tracks(CLIENT_ID, PLAYLIST_ID)
-    tracks = get_playlist_songs(PLAYLIST_ID, attributeList)
+    result = get_playlist_songs(PLAYLIST_ID, attributeList)
+    tracks = [i[1] for i in result]
     for track in tracks:#["items"]:
             #track = t["track"]
             #print("Adding track to data set: " + track['name'])
@@ -155,6 +156,7 @@ while userSelection != 'done':
     addPlaylistTracks(userSelection, 0)
 
 random.shuffle(instances)
+print(instances)
 
 trainingLabels = []
 trainingAttributes = []
@@ -162,7 +164,7 @@ for i in instances:
 	trainingLabels.append(i[0])
 	trainingAttributes.append(i[1])
 
-trainingAttributes = preprocessing.normalize(trainingAttributes, norm='l1')
+# trainingAttributes = preprocessing.normalize(trainingAttributes, norm='l1')
 
 div = int(TRAINING_PERCENT * float(len(instances)))
 training = instances[:div]

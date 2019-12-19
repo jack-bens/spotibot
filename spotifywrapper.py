@@ -25,19 +25,21 @@ else:
     print("Can't get token for", username)
 
 attributeKeys = [
-			'duration_ms',
-			'danceability',
-			'energy',
-			'instrumentalness',
-			'liveness',
-			'loudness',
-			'speechiness',
-			'tempo',
-			'valence',
-			'mode',
-			'time_signature',
-			'key',
-		]
+                'duration_ms',
+                'danceability',
+                'energy',
+                   'instrumentalness',
+                'liveness',
+                'loudness',
+                'speechiness',
+                'tempo',
+                'valence',
+                'mode',
+                'key',
+                'time_signature'
+                ]
+
+attributeList = ['popularity'] + attributeKeys
 
 def get_playlist_songs(id, attributes=attributeKeys):
 	""" Returns a list of instances, each as a list of attributes
@@ -52,6 +54,7 @@ def get_playlist_songs(id, attributes=attributeKeys):
 				'Authorization':f'Bearer {token}'})
 	if not r:
 		print(f"Couldn't get playlist with ID {id}: Response {r.status_code}")
+		return
 	else:
 		instances = []
 		for t in r.json()['tracks']['items']:
@@ -59,8 +62,8 @@ def get_playlist_songs(id, attributes=attributeKeys):
 			if track is None:
                             continue
 			af = sp.audio_features(track['id'])[0]
-			instanceAttr = [af[key] for key in af.keys() if key in attributes]
-			instanceAttr.append(track['popularity'])
+			instanceAttr = [af[key] for key in attributeKeys]
+			instanceAttr = [track['popularity']] + instanceAttr
 			instances.append([track['id'], instanceAttr])
 	return(instances)
 
