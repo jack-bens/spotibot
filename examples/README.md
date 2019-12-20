@@ -4,4 +4,4 @@ Provided are some sample run throughs of our playlist generator and data visuali
 
 #### Spotibot Playlist Generation Demo: https://youtu.be/cxcgqKCmEbw
 
-#### Spotibot Playlist Comparaison Demo: https://youtu.be/OYU4ZZmuEGc
+#### Spotibot Playlist Comparison Demo: https://youtu.be/OYU4ZZmuEGc
