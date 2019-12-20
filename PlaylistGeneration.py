@@ -9,7 +9,7 @@ import time
 import csv
 import pandas as pd
 import numpy as np
-import shap
+# import shap
 import webbrowser
 from spotifywrapper import get_playlist_songs
 
@@ -141,10 +141,13 @@ print("\nNow, Spotify makes it much more difficult to find music that you " \
 	+ "\nfor playlists of songs that you don't like.")
 print("Type 'done' when you're done adding playlists.")
 num_playlists = 0
-while userSelection.lower() != "done" and num_playlists < 1:
+while userSelection.lower() != "done":
 	userSelection = input("Enter playlist ID: ")
 	if userSelection.lower() == "done":
-		break
+		if num_playlists == 0:
+			print("Please enter at least one playlist ID.")
+		else:
+			break
 	try:
 		addPlaylistTracks(userSelection, 0)
 		num_playlists += 1
@@ -169,9 +172,9 @@ while True:
 # Get playlists from search query, add songs from playlists to test set
 testInstances = []
 for item in result['playlists']['items']:
-        print("\nSearching for songs in playlist: " + item['name'])
-        playlist_tracks = get_playlist_songs(item['id'], attributeList)
-        testInstances.extend(playlist_tracks)
+	print(f"\nSearching for songs in playlist: {item['name']}")
+	playlist_tracks = get_playlist_songs(item['id'], attributeList)
+	testInstances.extend(playlist_tracks)
 
 # Configure datasets for passing into learning algorithms
 random.shuffle(instances)
@@ -203,10 +206,10 @@ playlists = sp.user_playlist_create(username, playlist_name)
 # For all tracks with a predicted label of 1, add to playlist
 track_ids = []
 for i, prediction in enumerate(predictedLabels):
-        if (prediction == 1):
-                track_ids.append(testIds[i])
-		if len(track_ids) > PLAYLIST_MAX_SONGS:
-			break
+	if (prediction == 1):
+		track_ids.append(testIds[i])
+	if len(track_ids) > PLAYLIST_MAX_SONGS:
+		break
 
 if track_ids:
         sp.user_playlist_add_tracks(username, playlists['id'], track_ids)
@@ -214,11 +217,11 @@ if track_ids:
         print(f"\nPlaylist {playlist_name} has been added to your library! \n" \
 			+ "You can find it at: " + url)
         webbrowser.open(url)
-shap_values = shap.TreeExplainer(clf2).shap_values(trainingAttributes)
-shap.summary_plot(shap_values, trainingAttributes, plot_type="bar",
-					feature_names=attributeList)
-shap.dependence_plot("Feature 9", shap_values[0], trainingAttributes)
-shap.summary_plot(shap_values, trainingAttributes)
+# shap_values = shap.TreeExplainer(clf2).shap_values(trainingAttributes)
+# shap.summary_plot(shap_values, trainingAttributes, plot_type="bar",
+# 					feature_names=attributeList)
+# shap.dependence_plot("Feature 9", shap_values[0], trainingAttributes)
+# shap.summary_plot(shap_values, trainingAttributes)
 
 result = export_text(clf2, feature_names=attributeList)
 print(result)
@@ -235,10 +238,10 @@ playlists2 = sp.user_playlist_create(username, playlist_name2)
 # For all tracks with a predicted label of 1, add to playlist
 track_ids2 = []
 for i, prediction in enumerate(predictedLabels2):
-        if (prediction == 1):
-                track_ids2.append(testIds[i])
-		if len(track_ids2) > PLAYLIST_MAX_SONGS:
-			break
+	if (prediction == 1):
+		track_ids2.append(testIds[i])
+	if len(track_ids2) > PLAYLIST_MAX_SONGS:
+		break
 
 if track_ids2:
         sp.user_playlist_add_tracks(username, playlists2['id'], track_ids2)
