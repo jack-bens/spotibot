@@ -31,6 +31,7 @@ from sklearn.tree import export_graphviz
 import pydotplus
 
 from spotifywrapper import get_playlist_songs
+import webbrowser
 
 sp = spotipy.Spotify()
 
@@ -182,7 +183,7 @@ while userSelection != 'done':
 #trainingSplit = len(instances)
 
 print("OK! Now enter a search term/phrase, and our program will find playlists related to that search.")
-print("Our program will go through these playlists, and pick out songs that are similar to songs you like accordingot Spotify's attributes.")        
+print("Our program will go through these playlists, and pick out songs that are similar to songs you like according to Spotify's attributes.")        
 search_str = input("Enter search string: ")
 result = sp.search(q=search_str, limit=3, type='playlist')
 testInstances = []
@@ -230,13 +231,24 @@ scaler.fit(testAttributes)
 trainingAttributes = scaler.transform(trainingAttributes)
 testAttributes = scaler.transform(testAttributes)
 print(trainingAttributes[0])
+
 clf2 = tree.DecisionTreeClassifier()
 clf2 = clf2.fit(trainingAttributes, trainingLabels)
 predictedLabels = clf2.predict(testAttributes)
 print(predictedLabels)
+'''
+song_names = []
+for i in testIds:
+        song_names.append(sp.track(i)['name'])
+
+predictions = []
+for i, track in enumerate(predictedLabels):
+        predictions.append(predictedLabels[i] + " - " + song_names[i])
+
+print(predictions)'''
 
 # Create New Playlist
-playlist_name = "Spotibot: " + search_str.capitalize() + " Playlist"
+playlist_name = "Spotibot: " + search_str.capitalize() + " Playlist (DT)"
 playlists = sp.user_playlist_create(username, playlist_name)
 
 # For all tracks with a predicted label of 1, add to playlist
@@ -247,8 +259,9 @@ for i, prediction in enumerate(predictedLabels):
 
 if track_ids: # if it's not empty
         resultAdd = sp.user_playlist_add_tracks(username, playlists['id'], track_ids)
-        print(resultAdd)
-
+        url = playlists['external_urls']['spotify']
+        print("Playlist " + playlist_name + " has been added! You can find it at: " + url)
+        webbrowser.open(url)
 #matrix = writeConfMatrix([0,1], testLabels, predictedLabels)
 #print(calculateAccuracy([0,1], len(predictedLabels), matrix))
 shap_values = shap.TreeExplainer(clf2).shap_values(trainingAttributes)
@@ -258,4 +271,35 @@ shap.summary_plot(shap_values, trainingAttributes, plot_type="bar", feature_name
 
 result = export_text(clf2, feature_names=attributeList)
 print(result)
+
+
+print("Running Naive Bayes")
+
+clf3 = GaussianNB()
+clf3 = clf3.fit(trainingAttributes, trainingLabels)
+predictedLabels2 = clf3.predict(testAttributes)
+
+playlist_name2 = "Spotibot: " + search_str.capitalize() + " Playlist (NB)"
+playlists2 = sp.user_playlist_create(username, playlist_name2)
+
+track_ids2 = []
+for i, prediction in enumerate(predictedLabels2):
+        if (prediction == 1):
+                track_ids2.append(testIds[i])
+
+if track_ids2: # if it's not empty
+        resultAdd = sp.user_playlist_add_tracks(username, playlists2['id'], track_ids2)
+        url = playlists2['external_urls']['spotify']
+        print("Playlist " + playlist_name2 + " has been added! You can find it at: " + url)
+        webbrowser.open(url)
+# Geeks for Geeks hehe
+def intersection(lst1, lst2): 
+    lst3 = [value for value in lst1 if value in lst2] 
+    return lst3 
+
+
+print("The playlists have " + str(len(intersection(track_ids, track_ids2))) + " tracks in common!")
+
+
+
 
