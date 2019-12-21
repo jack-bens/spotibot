@@ -9,7 +9,7 @@ import time
 import csv
 import pandas as pd
 import numpy as np
-#import shap
+import shap
 import webbrowser
 from spotifywrapper import get_playlist_name
 from spotifywrapper import get_playlist_songs
@@ -176,8 +176,8 @@ trainingLabels = [i[0] for i in instances]
 trainingAttributes = [i[1] for i in instances]
 testIDs = [i[0] for i in testInstances]
 testAttributes = [i[1] for i in testInstances]
-print(testInstances[:3])
-print(testAttributes[:3])
+# print(testInstances[:3])
+# print(testAttributes[:3])
 
 # Scaling attributes
 scaler = MinMaxScaler()
@@ -211,15 +211,14 @@ if track_ids:
         print(f"\nPlaylist {playlist_name} has been added to your library! \n" \
 			+ "You can find it at: " + url)
         webbrowser.open(url)
-# shap_values = shap.TreeExplainer(clf2).shap_values(trainingAttributes)
-# shap.summary_plot(shap_values, trainingAttributes, plot_type="bar",
-# 					feature_names=attributeList)
-# shap.dependence_plot("Feature 9", shap_values[0], trainingAttributes)
-# shap.summary_plot(shap_values, trainingAttributes)
+shap_values = shap.TreeExplainer(clf2).shap_values(trainingAttributes)
+shap.summary_plot(shap_values, trainingAttributes, plot_type="bar",
+					feature_names=attributeList)
 
 # Print decision tree as text
+print("Here's what the decision tree looks like!\n")
 result = export_text(clf2, feature_names=attributeList)
-#print(result)
+print(result)
 
 # NAIVE BAYES
 print("\nFinding songs using Naive Bayes to make predictions!")
@@ -241,9 +240,47 @@ for i, prediction in enumerate(predictedLabels2):
 if track_ids2:
         sp.user_playlist_add_tracks(username, playlists2['id'], track_ids2)
         url = playlists2['external_urls']['spotify']
-        print(f"\nPlaylist {playlist_name} has been added to your library! \n" \
+        print(f"\nPlaylist {playlist_name2} has been added to your library! \n" \
 			+ "You can find it at: " + url)
         webbrowser.open(url)
 
-in_common = len([song for song in track_ids if song in track_ids2])
-print(f"\nThe playlists have {in_common} tracks in common!")
+in_common_list = [song for song in track_ids if song in track_ids2]
+# in_common = len(in_common_list)
+# print(f"\nThe playlists have {in_common} tracks in common!")
+
+# NEURAL NETWORKS
+print("\nFinding songs using Neural Networks to make predictions!")
+nn = MLPClassifier(
+			hidden_layer_sizes=(50,), # 1 hidden layer, 50 hidden neurons
+			activation="logistic", # Activation function = Logistic
+			solver="sgd", # Weight optimization: stochastic gradient descent
+			max_iter=150, # Number of epochs
+                        learning_rate_init = 0.2,
+			#verbose=True, # Print progress messages to stdout
+		)
+
+
+nn = nn.fit(trainingAttributes, trainingLabels)
+predictedLabels3 = nn.predict(testAttributes)
+
+playlist_name3 = "Spotibot: " + search_str.capitalize() + " Playlist (NN)"
+playlists3 = sp.user_playlist_create(username, playlist_name3)
+
+# For all tracks with a predicted label of 1, add to playlist
+track_ids3 = []
+for i, prediction in enumerate(predictedLabels3):
+	if (prediction == 1):
+		track_ids3.append(testIDs[i])
+	if len(track_ids3) >= PLAYLIST_MAX_SONGS:
+		break
+
+if track_ids3:
+        sp.user_playlist_add_tracks(username, playlists3['id'], track_ids3)
+        url = playlists3['external_urls']['spotify']
+        print(f"\nPlaylist {playlist_name3} has been added to your library! \n" \
+			+ "You can find it at: " + url)
+        webbrowser.open(url)
+
+in_common_all = len([song for song in in_common_list if song in track_ids3])
+print(f"\nThe playlists have {in_common_all} tracks in common!")
+

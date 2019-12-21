@@ -93,7 +93,7 @@ def addPlaylistTracks (PLAYLIST_ID, label):
     playlist = sp.user_playlist(CLIENT_ID, PLAYLIST_ID)
     print("Adding tracks from playlist " + playlist['name'])
     #tracks = sp.user_playlist_tracks(CLIENT_ID, PLAYLIST_ID)
-    result = get_playlist_songs(PLAYLIST_ID, attributeList)
+    result = get_playlist_songs(token, PLAYLIST_ID, label, attributeList)
     tracks = [i[1] for i in result]
     for track in tracks:#["items"]:
             #track = t["track"]
@@ -156,7 +156,7 @@ while userSelection != 'done':
     addPlaylistTracks(userSelection, 0)
 
 random.shuffle(instances)
-print(instances)
+# print(instances)
 
 trainingLabels = []
 trainingAttributes = []
@@ -193,7 +193,8 @@ clf3 = MLPClassifier(
 			hidden_layer_sizes=(50,), # 1 hidden layer, 50 hidden neurons
 			activation="logistic", # Activation function = Logistic
 			solver="sgd", # Weight optimization: stochastic gradient descent
-			max_iter=500, # Number of epochs
+			max_iter=150, # Number of epochs
+                        learning_rate_init = 0.2,
 			#verbose=True, # Print progress messages to stdout
 		)
 clf3 = clf3.fit(trainingAttributes, trainingLabels)
