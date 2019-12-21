@@ -176,8 +176,11 @@ trainingLabels = [i[0] for i in instances]
 trainingAttributes = [i[1] for i in instances]
 testIDs = [i[0] for i in testInstances]
 testAttributes = [i[1] for i in testInstances]
+<<<<<<< HEAD
 # print(testInstances[:3])
 # print(testAttributes[:3])
+=======
+>>>>>>> 1f87a30aaefe734a26677d600712d8db15f9c47c
 
 # Scaling attributes
 scaler = MinMaxScaler()
@@ -191,7 +194,6 @@ print("\nFinding songs using Decision Trees to make predictions!")
 clf2 = tree.DecisionTreeClassifier()
 clf2 = clf2.fit(trainingAttributes, trainingLabels)
 predictedLabels = clf2.predict(testAttributes)
-print(predictedLabels)
 
 # Create new playlist
 playlist_name = "Spotibot: " + search_str.capitalize() + " Playlist (DT)"
@@ -211,6 +213,7 @@ if track_ids:
         print(f"\nPlaylist {playlist_name} has been added to your library! \n" \
 			+ "You can find it at: " + url)
         webbrowser.open(url)
+
 shap_values = shap.TreeExplainer(clf2).shap_values(trainingAttributes)
 shap.summary_plot(shap_values, trainingAttributes, plot_type="bar",
 					feature_names=attributeList)
@@ -219,6 +222,17 @@ shap.summary_plot(shap_values, trainingAttributes, plot_type="bar",
 print("Here's what the decision tree looks like!\n")
 result = export_text(clf2, feature_names=attributeList)
 print(result)
+
+# Visualize decision tree and save as a png file
+try:
+	tree.plot_tree(clf2)
+	dot_data = StringIO()
+	export_graphviz(clf2, out_file=dot_data, filled=True, rounded=True,
+		special_characters=True)
+	graph = pydotplus.graph_from_dot_data(dot_data.getvalue())
+	graph.write_png("spotibot_tree.png")
+except Exception as e:
+	print(f"Error while trying to visualize decision tree: {e}")
 
 # NAIVE BAYES
 print("\nFinding songs using Naive Bayes to make predictions!")
