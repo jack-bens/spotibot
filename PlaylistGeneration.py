@@ -9,8 +9,9 @@ import time
 import csv
 import pandas as pd
 import numpy as np
-# import shap
+#import shap
 import webbrowser
+from spotifywrapper import get_playlist_name
 from spotifywrapper import get_playlist_songs
 
 # Learning model imports
@@ -35,8 +36,6 @@ from IPython.display import Image
 from sklearn.tree import export_graphviz
 import pydotplus
 
-sp = spotipy.Spotify()
-
 CLIENT_ID ="2f3b64d6217f4c36b44b10718e88a860"
 CLIENT_SECRET = "d948722ed8804508962d797d9a9d7206"
 scope = 'user-library-read playlist-modify-public user-top-read'
@@ -60,28 +59,15 @@ audiofeatureKeys = [
 attributeList = ['popularity'] + audiofeatureKeys
 instances = []
 
-# Function for adding playlist tracks to an instance set
-def addPlaylistTracks (playlist_id, label):
-    playlist = sp.user_playlist(CLIENT_ID, playlist_id)
-    print("Adding tracks from playlist " + playlist['name'])
-    tracks = get_playlist_songs(playlist_id, attributeList)
-	# Extract actual track, don't include id in instance
-    tracks = [i[1] for i in tracks]
-    for track in tracks:
-            instances.append([label, track])
-
 # Welcome message
 print("\nWelcome to Spotibot: " \
 	+ "Your friendly neighborhood personalized playlist generator!")
 time.sleep(1)
-print("\nIn a moment, your web browser will open to the 'Account overview' " \
-	+ "page of your Spotify account. \n")
-time.sleep(1)
-# Open account page and prompt for username
-webbrowser.open("https://www.spotify.com/us/account/overview/")
-username = input("Please enter your Spotify username.\nThis is the " \
-	+ "seemingly random string of characters found on the 'Account overview' " \
-	+ "page: \n")
+# Prompt for username
+username = input("\nPlease enter your Spotify username. \n" \
+ 	+ "(Note: If you signed up with Facebook, your username can be found on\n" \
+	+ "the 'Account overview' page of the Spotify website.)\n" \
+	+ "Username: ")
 # Get user token (with error handling)
 try:
 	token = util.prompt_for_user_token(username, scope, client_id=CLIENT_ID,
@@ -100,7 +86,7 @@ except:
 print(f"\nHi, {sp.current_user()['display_name']}!\nYou're using Spotibot, a " \
 	+ "personalized playlist generator with engaging data visualizations \n" \
 	+ "to give you a better idea of how we curate songs for your personally " \
-	+ "generated playlists.")
+	+ "generated playlists.\n")
 print("We'll start by adding your Top Tracks and Liked Songs to get an idea " \
 	+ "of what music you normally enjoy!\n")
 
@@ -109,6 +95,7 @@ print("Now Adding Your Top Tracks!")
 training_ids = []
 results = sp.current_user_top_tracks(time_range='medium_term', limit=50)
 for track in results['items']:
+		# Get audio features for instance attribute values
         af = sp.audio_features(track["id"])[0]
         audioAttributes = [af[key] for key in audiofeatureKeys]
         instance = [track['popularity']] + audioAttributes
@@ -130,15 +117,15 @@ for t in results['items']:
         instances.append([1, instance])
         training_ids.append(track["id"])
 
-# Print total number of songs added
+# Print total number of songs added (testCut also serves as a cap on test set)
 testCut = len(instances)
-print(f"{str(testCut)} Top Tracks and Liked songs added!")
+print(f"{testCut} Top Tracks and Liked songs added!")
 
 # Prompt user for "dislike" playlist IDs to add to training set with label 0
 userSelection = ''
 print("\nNow, Spotify makes it much more difficult to find music that you " \
-	+ "*don't* like, \nso we're going to ask you to give the playlist ID(s) " \
-	+ "\nfor playlists of songs that you don't like.")
+	+ "*don't* like, so we're going \nto ask you to give the playlist ID(s) " \
+	+ "for playlists of songs that you don't like.")
 print("Type 'done' when you're done adding playlists.")
 num_playlists = 0
 while userSelection.lower() != "done":
@@ -149,7 +136,11 @@ while userSelection.lower() != "done":
 		else:
 			break
 	try:
-		addPlaylistTracks(userSelection, 0)
+		pname = get_playlist_name(token, userSelection)
+		print(f"\nAdding tracks from playlist: {pname}")
+		tracks = get_playlist_songs(token, userSelection, label=0,
+			attributes=attributeList)
+		instances.extend(tracks)
 		num_playlists += 1
 	except:
 		print(f"\nCouldn't get songs from playlist ID {userSelection}.\n" \
@@ -164,27 +155,29 @@ while True:
 	search_str = input("Enter search string: ")
 	result = sp.search(q=search_str, limit=3, type='playlist')
 	if result['playlists']['total'] == 0:
-		print("\nNo results found for {search_str}. :( \n" \
+		print(f"\nNo results found for {search_str}. :( \n" \
 			+ "Please try another keyword: ")
 	else:
 		break
 
 # Get playlists from search query, add songs from playlists to test set
 testInstances = []
-for item in result['playlists']['items']:
-	print(f"\nSearching for songs in playlist: {item['name']}")
-	playlist_tracks = get_playlist_songs(item['id'], attributeList)
+for playlist in result['playlists']['items']:
+	print(f"Searching for songs in playlist: {playlist['name']}")
+	playlist_tracks = get_playlist_songs(token, playlist['id'],
+		attributes=attributeList)
 	testInstances.extend(playlist_tracks)
 
 # Configure datasets for passing into learning algorithms
 random.shuffle(instances)
 random.shuffle(testInstances)
 testInstances = testInstances[:testCut]
-training = instances
-trainingLabels = [i[0] for i in training]
-trainingAttributes = [i[1] for i in training]
+trainingLabels = [i[0] for i in instances]
+trainingAttributes = [i[1] for i in instances]
+testIDs = [i[0] for i in testInstances]
 testAttributes = [i[1] for i in testInstances]
-testIds = [i[0] for i in testInstances]
+print(testInstances[:3])
+print(testAttributes[:3])
 
 # Scaling attributes
 scaler = MinMaxScaler()
@@ -198,6 +191,7 @@ print("\nFinding songs using Decision Trees to make predictions!")
 clf2 = tree.DecisionTreeClassifier()
 clf2 = clf2.fit(trainingAttributes, trainingLabels)
 predictedLabels = clf2.predict(testAttributes)
+print(predictedLabels)
 
 # Create new playlist
 playlist_name = "Spotibot: " + search_str.capitalize() + " Playlist (DT)"
@@ -207,7 +201,7 @@ playlists = sp.user_playlist_create(username, playlist_name)
 track_ids = []
 for i, prediction in enumerate(predictedLabels):
 	if (prediction == 1):
-		track_ids.append(testIds[i])
+		track_ids.append(testIDs[i])
 	if len(track_ids) > PLAYLIST_MAX_SONGS:
 		break
 
@@ -223,8 +217,9 @@ if track_ids:
 # shap.dependence_plot("Feature 9", shap_values[0], trainingAttributes)
 # shap.summary_plot(shap_values, trainingAttributes)
 
+# Print decision tree as text
 result = export_text(clf2, feature_names=attributeList)
-print(result)
+#print(result)
 
 # NAIVE BAYES
 print("\nFinding songs using Naive Bayes to make predictions!")
@@ -239,8 +234,8 @@ playlists2 = sp.user_playlist_create(username, playlist_name2)
 track_ids2 = []
 for i, prediction in enumerate(predictedLabels2):
 	if (prediction == 1):
-		track_ids2.append(testIds[i])
-	if len(track_ids2) > PLAYLIST_MAX_SONGS:
+		track_ids2.append(testIDs[i])
+	if len(track_ids2) >= PLAYLIST_MAX_SONGS:
 		break
 
 if track_ids2:

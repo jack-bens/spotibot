@@ -6,29 +6,14 @@ import json
 import spotipy
 import spotipy.util as util
 
-RANDOM_SEED = 12345
-TRAINING_PERCENT = 0.6
-
 CLIENT_ID = '2f3b64d6217f4c36b44b10718e88a860'
 SECRET = 'd948722ed8804508962d797d9a9d7206'
-USERNAME = '9qmimovhfjmws0vgx2gotnefa'
-
-# Set permissions scope:
-scope = 'user-library-read'
-# Request user library access, get authentication token:
-token = util.prompt_for_user_token(USERNAME, scope, client_id=CLIENT_ID,
-                                   client_secret=SECRET,
-                                   redirect_uri='http://localhost/')
-if token:
-    sp = spotipy.Spotify(auth=token)
-else:
-    print("Can't get token for", username)
 
 attributeKeys = [
                 'duration_ms',
                 'danceability',
                 'energy',
-                   'instrumentalness',
+                'instrumentalness',
                 'liveness',
                 'loudness',
                 'speechiness',
@@ -41,32 +26,53 @@ attributeKeys = [
 
 attributeList = ['popularity'] + attributeKeys
 
-def get_playlist_songs(id, attributes=attributeKeys):
-    """ Returns a list of instances, each as a list of attributes
+def get_playlist_name(token, id):
+	""" Returns a playlist name
 
-    Keyword arguments:
+	Keyword arguments:
+	token -- Spotify API authorization token
     id -- playlist ID
-    attributes -- list of attribute keys to get from audio features
-        (default: pre-determined attributes list)
-    """
-    r = requests.get(f'https://api.spotify.com/v1/playlists/{id}',
+	"""
+	r = requests.get(f'https://api.spotify.com/v1/playlists/{id}',
         headers={'Content-Type':'application/json',
                 'Authorization':f'Bearer {token}'})
-    if not r:
-        print(f"Couldn't get playlist with ID {id}: Response {r.status_code}")
-        return
-    else:
-        instances = []
-        for t in r.json()['tracks']['items']:
-            track = t['track']
-            if track is None:
-                continue
-            af = sp.audio_features(track['id'])[0]
-            if af:
-                instanceAttr = [af[key] for key in attributeKeys]
-                instanceAttr = [track['popularity']] + instanceAttr
-                instances.append([track['id'], instanceAttr])
-        return(instances)
+	if not r:
+		print(f"Couldn't get playlist with ID {id}: Response {r.status_code}")
+	else:
+		return r.json()['name']
+
+def get_playlist_songs(token, id, label=None, attributes=attributeKeys):
+	""" Returns a list of instances, each as a list of attributes
+
+	Keyword arguments:
+	token -- Spotify API authorization token
+	id -- playlist ID
+	label -- label to associate with returned instances
+		(default: if not specified, track IDs returned as labels)
+	attributes -- list of attribute keys to get from audio features
+	    (default: pre-determined attributes list)
+	"""
+	h = {'Content-Type':'application/json', 'Authorization':f'Bearer {token}'}
+	r = requests.get(f'https://api.spotify.com/v1/playlists/{id}', headers=h)
+	if not r:
+		print(f"Couldn't get playlist with ID {id}: Response {r.status_code}")
+	else:
+		instances = []
+		for t in r.json()['tracks']['items']:
+			track = t['track']
+			if track is None:
+				continue
+			r2 = requests.get('https://api.spotify.com/v1/audio-features/' \
+				+ f"{track['id']}", headers=h)
+			if r2:
+				af = r2.json()
+				instanceAttr = [af[key] for key in attributeKeys]
+				instanceAttr = [track['popularity']] + instanceAttr
+				if label != None:
+					instances.append([label, instanceAttr])
+				else:
+					instances.append([track['id'], instanceAttr])
+		return(instances)
 
 # Does not work yet:
 def set_playlist_image(id, filename):
